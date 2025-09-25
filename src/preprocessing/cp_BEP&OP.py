@@ -1,182 +1,135 @@
-import logging
-from pathlib import Path
-from tkinter import Tk, filedialog
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# --------------------------------------------------
-# Configuration
-# --------------------------------------------------
-RHO = 1000.0
-G = 9.81
-
-plt.rcParams.update({
-    "font.family": "Times New Roman",
-    "figure.figsize": (10, 12),
-    "axes.grid": True,
-    "grid.linestyle": "--",
-    "grid.alpha": 0.7,
-})
-
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-
-# --------------------------------------------------
-# Utility Functions
-# --------------------------------------------------
-def clean_columns(df: pd.DataFrame) -> pd.DataFrame:
-    df.columns = (df.columns.str.replace("\n", "", regex=False)
-                            .str.replace("\t", "", regex=False)
-                            .str.replace("\xa0", "", regex=False)
-                            .str.strip())
-    return df
-
-def find_flow_column(df: pd.DataFrame):
-    return next((c for c in df.columns if "Flow" in c and "Q" in c), None)
-
-def calc_efficiency(df, torque_col, rpm_col, p_in_col, p_out_col, v1_col, v2_col, he_col, flow_col):
-    df["q_m3s"] = df[flow_col] / 1000
-    df["p_in_Pa"] = df[p_in_col] * 1000
-    df["p_out_Pa"] = df[p_out_col] * 1000
-    df["ha"] = ((df["p_out_Pa"] - df["p_in_Pa"]) / (RHO * G) +
-                df[he_col] + (df[v2_col]**2 - df[v1_col]**2) / (2*G))
-    df["omega"] = df[rpm_col] * np.pi / 30
-    df["w_hydraulic"] = RHO * G * df["q_m3s"] * df["ha"]
-    df["w_shaft"] = df[torque_col] * df["omega"]
-    df["efficiency"] = (df["w_hydraulic"] / df["w_shaft"] * 100).clip(0, 100)
-    return df
-
-def find_stable_bep(df: pd.DataFrame) -> pd.Series:
-    max_eff = df["efficiency"].max()
-    candidates = df[df["efficiency"] >= 0.99 * max_eff].copy()
-    candidates["y_diff"] = candidates["efficiency"].diff().abs().fillna(0) + candidates["efficiency"].diff(-1).abs().fillna(0)
-    return candidates.loc[candidates["y_diff"].idxmin()]
-
-def calc_system_head(Q: pd.Series, Z_DIFF=2.0, L=2.0, D=0.02, EPS=0.00015, KL_SUM=1.8):
+# ----------------------------
+# Pipe & Fluid Configuration
+# ----------------------------
+class PipeConfig:
+    D = 0.02
+    L = 2.0
+    EPS = 0.00015
+    KL_SUM = 1.8
+    Z_DIFF = 2.0
+    G = 9.81
     A = np.pi * (D/2)**2
-    G_CONST = 9.81
-    RHO_WATER = 998.2
-    MU_WATER = 0.001003
-    H_sys = []
 
+class FluidProperties:
+    RHO = 998.2
+    MU = 0.001003
+
+# ----------------------------
+# Utility Functions
+# ----------------------------
+def velocity(Q, config):
+    return 4 * Q / (np.pi * config.D**2)
+
+def reynolds(rho, mu, Q, config):
+    V = velocity(Q, config)
+    return rho * V * config.D / mu
+
+def friction_factor(Re, config):
+    if Re < 2000:
+        return 64.0 / Re
+    return (-1.8 * np.log10((config.EPS / (3.7 * config.D)) + (5.74 / (Re**0.9)))) ** -2
+
+def calc_system_head(Q, fluid, config):
+    H_sys = []
     for q in Q:
-        if q == 0:
-            H_sys.append(Z_DIFF)
-            continue
-        V = 4*q/(np.pi*D**2)
-        Re = RHO_WATER * V * D / MU_WATER
-        if Re < 2000:
-            f = 64/Re
-        else:
-            f = (-1.8*np.log10(EPS/(3.7*D) + 5.74/Re**0.9))**-2
-        k = (f*L/D + KL_SUM)/(2*G_CONST*A**2)
-        H_sys.append(Z_DIFF + k*q**2)
-    return pd.Series(H_sys, index=Q.index)
+        Re = reynolds(fluid.RHO, fluid.MU, q, config)
+        f = friction_factor(Re, config)
+        k = (f * config.L / config.D + config.KL_SUM) / (2 * config.G * config.A**2)
+        H_sys.append(config.Z_DIFF + k * q**2)
+    return np.array(H_sys)
+
+def calc_actual_head(p1, p2, v1, v2, z_diff=PipeConfig.Z_DIFF, rho=FluidProperties.RHO, g=PipeConfig.G):
+    velocity_term = (v2**2 - v1**2) / (2 * g)
+    ramda = rho * g / 1000
+    return (p2 - p1)/ramda + z_diff + velocity_term
 
 def find_intersection(x, y1, y2):
     for i in range(len(x)-1):
         if (y1[i] - y2[i]) * (y1[i+1] - y2[i+1]) <= 0:
-            # Linear interpolation
-            denom = ((y1[i+1]-y2[i+1]) - (y1[i]-y2[i]))
-            if denom == 0:
-                continue
-            x0 = x[i] + (x[i+1]-x[i]) * (y2[i]-y1[i]) / denom
-            y0 = y1[i] + (y1[i+1]-y1[i]) * (x0-x[i]) / (x[i+1]-x[i])
+            x0 = x[i] + (x[i+1]-x[i])*(y2[i]-y1[i])/((y1[i+1]-y2[i+1])-(y1[i]-y2[i]))
+            y0 = y1[i] + (y1[i+1]-y1[i])*(x0-x[i])/(x[i+1]-x[i])
             return x0, y0
     return None, None
 
-def select_file() -> Path:
-    Tk().withdraw()
-    file_path = filedialog.askopenfilename(
-        title="Select Excel or CSV file",
-        filetypes=[("Excel or CSV files", "*.xlsx *.xls *.csv")]
-    )
-    return Path(file_path) if file_path else None
+def calc_efficiency(Q, H, torque, n_rpm):
+    omega = 2*np.pi*n_rpm/60  # rad/s
+    power_hydraulic = FluidProperties.RHO * PipeConfig.G * Q * H
+    power_shaft = torque * omega
+    return (power_hydraulic / power_shaft * 100).clip(upper=100)
 
-# --------------------------------------------------
-# Main Workflow
-# --------------------------------------------------
-def main():
-    data_file = select_file()
-    if not data_file:
-        logging.error("No file selected. Exiting.")
-        return
-    logging.info(f"Selected file: {data_file}")
+# ----------------------------
+# Example Data
+# ----------------------------
+data = {
+    "Pump Speed n [rpm]": [900]*18,
+    "Flow Rate Q [l/s]": [0.0527,0.1191,0.2793,0.4258,0.5449,0.6641,0.7168,0.7695,0.8242,0.9023,0.9160,0.9570,0.9824,1.0098,1.0352,1.0762,1.0625,1.0625],
+    "Inlet Pressure Pin [kPa]": [1.262,1.262,1.212,0.858,0.454,0.0,-0.303,-0.555,-0.909,-1.262,-1.464,-1.767,-1.969,-2.02,-2.322,-2.423,-2.474,-2.474],
+    "Outlet Pressure Pout [kPa]": [0.1216,0.2747,0.6439,0.9817,1.2563,1.5310,1.6526,1.7742,1.9003,2.0804,2.1119,2.2065,2.2650,2.3281,2.3866,2.4812,2.4496,2.4496],
+    "Inlet Velocity Vin [m/s]": [0.2192]*18,
+    "Outlet Velocity Vout [m/s]": [0.075]*18,
+    "Motor Torque t [Nm]": [0.0402,0.1098,0.1345,0.1484,0.1561,0.2041,0.2041,0.2242,0.1994,0.2535,0.2473,0.2597,0.2674,0.2891,0.2736,0.2922,0.3061,0.2953]
+}
+df = pd.DataFrame(data)
+df["Q_m3s"] = df["Flow Rate Q [l/s]"]/1000
 
-    ext = data_file.suffix.lower()
-    if ext in [".xlsx", ".xls"]:
-        df = pd.read_excel(data_file)
-    elif ext == ".csv":
-        try:
-            df = pd.read_csv(data_file, encoding="utf-8")
-        except UnicodeDecodeError:
-            df = pd.read_csv(data_file, encoding="cp949")
-    else:
-        logging.error(f"Unsupported file type: {ext}")
-        return
+# ----------------------------
+# 계산
+# ----------------------------
+config = PipeConfig()
+fluid = FluidProperties()
 
-    df = clean_columns(df)
+df["ha"] = calc_actual_head(df["Inlet Pressure Pin [kPa]"], df["Outlet Pressure Pout [kPa]"],
+                            df["Inlet Velocity Vin [m/s]"], df["Outlet Velocity Vout [m/s]"])
+df["H_system"] = calc_system_head(df["Q_m3s"], fluid, config)
+df["efficiency"] = calc_efficiency(df["Q_m3s"], df["ha"], df["Motor Torque t [Nm]"], df["Pump Speed n [rpm]"])
 
-    try:
-        torque_col = next(c for c in df.columns if "Torque" in c)
-        rpm_col = next(c for c in df.columns if "Speed" in c or "RPM" in c)
-        flow_col = find_flow_column(df)
-        p1_col = next(c for c in df.columns if "Inlet" in c and "Pressure" in c)
-        p2_col = next(c for c in df.columns if "Outlet" in c and "Pressure" in c)
-        v1_col = next(c for c in df.columns if "Inlet" in c and "Velocity" in c)
-        v2_col = next(c for c in df.columns if "Outlet" in c and "Velocity" in c)
-        he_col = next(c for c in df.columns if "Elevation" in c or "He" in c)
-    except StopIteration:
-        logging.error(f"Required columns not found. Available columns:\n{list(df.columns)}")
-        return
+# OP 계산
+Q_op, H_op = find_intersection(df["Q_m3s"].values, df["ha"].values, df["H_system"].values)
 
-    # ---------------------
-    # Calculations
-    # ---------------------
-    df = calc_efficiency(df, torque_col, rpm_col, p1_col, p2_col, v1_col, v2_col, he_col, flow_col)
-    df_sorted = df.sort_values("q_m3s").reset_index(drop=True)
-    bep_row = find_stable_bep(df_sorted)
-    df_sorted["H_system"] = calc_system_head(df_sorted["q_m3s"])
-    Q_op, H_op = find_intersection(df_sorted["q_m3s"], df_sorted["ha"], df_sorted["H_system"])
+# BEP 계산
+idx_bep = df["efficiency"].idxmax()
+Q_bep = df.loc[idx_bep,"Q_m3s"]
+H_bep = df.loc[idx_bep,"ha"]
+eff_bep = df.loc[idx_bep,"efficiency"]
 
-    # -----------------------------
-    # Subplots (BEP/Efficiency + Head/OP)
-    # -----------------------------
-    fig, (ax1, ax2) = plt.subplots(2,1, figsize=(10,12))
+# ----------------------------
+# Figure with two Y axes
+# ----------------------------
+fig, ax1 = plt.subplots(figsize=(10,6))
 
-    # Efficiency subplot
-    ax1.plot(df_sorted["q_m3s"], df_sorted["efficiency"], "-o", color="green", label="Efficiency")
-    ax1.scatter(bep_row["q_m3s"], bep_row["efficiency"], color="red", s=100, label="BEP")
-    ax1.set_xlabel("Flow rate Q [m³/s]")
-    ax1.set_ylabel("Efficiency [%]")
-    ax1.set_title("Pump Efficiency Curve with BEP")
-    ax1.legend()
-    ax1.grid(True)
+color_head = "blue"
+ax1.set_xlabel("Flow rate Q [m³/s]")
+ax1.set_ylabel("Head H [m]", color=color_head)
+ax1.plot(df["Q_m3s"], df["ha"], "-o", color=color_head, label="Actual Head")
+ax1.plot(df["Q_m3s"], df["H_system"], "-o", color="green", label="System Curve")
+ax1.tick_params(axis='y', labelcolor=color_head)
+ax1.grid(True)
 
-    # Head subplot (OP)
-    ax2.plot(df_sorted["q_m3s"], df_sorted["ha"], "-o", color="blue", label="Actual Head")
-    ax2.plot(df_sorted["q_m3s"], df_sorted["H_system"], "-o", color="green", label="System Curve")
-    if Q_op is not None:
-        ax2.scatter(Q_op, H_op, color="red", s=100, label="Operating Point")
-        offset_y = 0.5
-        ax2.annotate(
-            f"OP ({Q_op:.4f}, {H_op:.2f})",
-            xy=(Q_op, H_op),
-            xytext=(Q_op, H_op + offset_y),
-            textcoords='data',
-            fontsize=10,
-            color='red',
-            arrowprops=dict(arrowstyle="->", color="red", lw=1),
-            ha='center'
-        )
-    ax2.set_xlabel("Flow rate Q [m³/s]")
-    ax2.set_ylabel("Head H [m]")
-    ax2.set_title("Actual Head Curve & System Curve with Operating Point")
-    ax2.legend()
-    ax2.grid(True)
+if Q_op is not None:
+    ax1.scatter(Q_op, H_op, color="red", s=100, label="Operating Point (OP)")
+    ax1.annotate(f"OP\n({Q_op:.4f},{H_op:.2f})", xy=(Q_op,H_op), xytext=(Q_op,H_op+0.5),
+                 arrowprops=dict(arrowstyle="->", color="red"))
 
-    plt.tight_layout()
-    plt.show()
+ax1.scatter(Q_bep, H_bep, color="purple", s=100, label=f"BEP ({eff_bep:.1f}%)")
+ax1.annotate(f"BEP\n({eff_bep:.1f}%)", xy=(Q_bep,H_bep), xytext=(Q_bep,H_bep+0.5),
+             arrowprops=dict(arrowstyle="->", color="purple"))
 
-if __name__ == "__main__":
-    main()
+# Efficiency를 오른쪽 Y축으로
+ax2 = ax1.twinx()
+color_eff = "orange"
+ax2.set_ylabel("Efficiency (%)", color=color_eff)
+ax2.plot(df["Q_m3s"], df["efficiency"], "-s", color=color_eff, alpha=0.7, label="Efficiency")
+ax2.tick_params(axis='y', labelcolor=color_eff)
+
+# Legend 통합
+lines_1, labels_1 = ax1.get_legend_handles_labels()
+lines_2, labels_2 = ax2.get_legend_handles_labels()
+ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc="upper right")
+
+plt.title("Pump Head Curve, System Curve, Efficiency, OP & BEP")
+fig.tight_layout()
+plt.show()
