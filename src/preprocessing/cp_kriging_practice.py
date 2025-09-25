@@ -8,7 +8,7 @@ from adjustText import adjust_text
 # Configuration
 # --------------------------------------------------
 RHO: float = 1000.0  # Water density [kg/m³]
-G: float = 9.81  # Gravity [m/s²]
+G: float = 9.81      # Gravity [m/s²]
 
 plt.rcParams.update({
     "font.family": "Times New Roman",
@@ -41,63 +41,19 @@ def find_stable_bep(df: pd.DataFrame) -> pd.Series:
     stable_bep = candidates.loc[candidates["y_diff"].idxmin()]
     return stable_bep
 
-def plot_efficiency(df: pd.DataFrame, q_pred=None, eff_pred=None) -> None:
-    plt.plot(df["q_m3s"], df["efficiency"], "ro-", markersize=6, label="Original Data")
-
-    # 안정적인 BEP 표시
-    bep_row = find_stable_bep(df)
-    bep_q = bep_row["q_m3s"]
-    bep_eff = bep_row["efficiency"]
-
-    plt.scatter(bep_q, bep_eff, color="red", s=100, zorder=5)
-    texts = [plt.text(
-        bep_q, bep_eff + 0.5, f"BEP\n(Q={bep_q:.4f}, Eff={bep_eff:.2f}%)",
-        fontsize=10, color="red", fontweight="bold", ha="center"
-    )]
-
-    adjust_text(
-        texts,
-        only_move={"points": "y", "text": "y"},
-        arrowprops=dict(
-            arrowstyle="->",
-            color="red",
-            lw=1,
-            shrinkA=5,
-            shrinkB=5,
-        ),
-        expand_points=(1.2, 1.2),
-    )
-
-    # Kriging 예측 그래프
-    if q_pred is not None and eff_pred is not None:
-        plt.plot(q_pred, eff_pred, "b-", label="Kriging Prediction")
-
-    plt.xlabel("Flow rate Q [m³/s]")
-    plt.ylabel("Efficiency [%]")
-    plt.title("Pump Efficiency Curve with Kriging Prediction")
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
-
-    logging.info(f"Stable BEP: {bep_eff:.2f}% at Q = {bep_q:.4f} m³/s")
-
 # --------------------------------------------------
 # Ordinary Kriging 함수 (1D)
 # --------------------------------------------------
-def ordinary_kriging(q_data, eff_data, q_pred):
+def ordinary_kriging(q_data, eff_data, q_pred, range_factor: float = 0.1):
     n = len(q_data)
+    sill = np.var(eff_data)
+    range_ = (q_data.max() - q_data.min()) * range_factor
 
-    # 데이터 스케일 기반 sill과 range
-    sill = np.var(eff_data)  # eff_data 분산
-    range_ = (q_data.max() - q_data.min()) / 3  # 데이터 전체 범위의 1/3
-
-    # 공분산 행렬 계산
+    # 공분산 행렬
     cov_matrix = np.zeros((n, n))
     for i in range(n):
         for j in range(n):
             cov_matrix[i, j] = sill * np.exp(-abs(q_data[i]-q_data[j])/range_)
-
-    # 안정화
     cov_matrix += 1e-10 * np.eye(n)
 
     # Lagrange multiplier 추가
@@ -114,12 +70,15 @@ def ordinary_kriging(q_data, eff_data, q_pred):
         weights = np.linalg.solve(cov_matrix_aug, np.append(eff_data, 1.0))
         eff_q = np.dot(weights[:-1], k)
         eff_pred.append(eff_q)
-    return np.array(eff_pred)
+
+    eff_pred = np.array(eff_pred)
+    eff_pred = np.clip(eff_pred, 0, 100)
+    return eff_pred
 
 # --------------------------------------------------
-# Main Workflow
+# Main Workflow (Multiple Kriging Points)
 # --------------------------------------------------
-def calculate_efficiency_kriging(df: pd.DataFrame) -> None:
+def calculate_efficiency_kriging_multiple(df: pd.DataFrame, kriging_points_list=[50, 100], range_factor: float = 0.1, random_state: int = 42):
     df = clean_columns(df)
 
     # Column detection
@@ -139,7 +98,7 @@ def calculate_efficiency_kriging(df: pd.DataFrame) -> None:
     # Calculations
     df["p_in_Pa"] = df[p1_col] * 1000.0
     df["p_out_Pa"] = df[p2_col] * 1000.0
-    df["q_m3s"] = df[flow_col] / 1000.0  # L/s -> m³/s
+    df["q_m3s"] = df[flow_col] / 1000.0
 
     df["ha"] = ((df["p_out_Pa"] - df["p_in_Pa"]) / (RHO * G)
                 + df[he_col]
@@ -150,35 +109,53 @@ def calculate_efficiency_kriging(df: pd.DataFrame) -> None:
     df["w_shaft"] = df[torque_col] * df["omega"]
 
     df["efficiency"] = (df["w_hydraulic"] / df["w_shaft"]) * 100.0
-    df["efficiency"] = df["efficiency"].clip(lower=0, upper=100)
-
+    df["efficiency"] = df["efficiency"].clip(0, 100)
     df_sorted = df.sort_values("q_m3s")
 
-    logging.info(
-        "\n=== Efficiency Results ===\n"
-        + df_sorted[["q_m3s", "efficiency"]].to_string(
-            index=False, header=["Flow rate [m³/s]", "Efficiency [%]"]
-        )
-    )
-
-    # Kriging 예측 (중복 유량값 처리)
+    # Kriging용 데이터
     df_kriging = df_sorted.groupby("q_m3s")["efficiency"].mean().reset_index()
     q_data = df_kriging["q_m3s"].values
     eff_data = df_kriging["efficiency"].values
 
-    q_pred = np.linspace(q_data.min(), q_data.max(), 100)
-    eff_pred = ordinary_kriging(q_data, eff_data, q_pred)
-
     # 시각화
-    plot_efficiency(df_sorted, q_pred, eff_pred)
+    plt.plot(df_sorted["q_m3s"], df_sorted["efficiency"], "ro-", markersize=6, label="Original Data")
+    colors = ["blue", "green", "orange"]
+
+    for i, points in enumerate(kriging_points_list):
+        np.random.seed(random_state)
+        indices = np.random.choice(len(q_data), points, replace=True)
+        q_data_aug = q_data[indices] + np.random.normal(0, 0.0005, points)
+        eff_data_aug = eff_data[indices]
+
+        q_pred = np.linspace(q_data.min(), q_data.max(), 200)
+        eff_pred = ordinary_kriging(q_data_aug, eff_data_aug, q_pred, range_factor=range_factor)
+        plt.plot(q_pred, eff_pred, color=colors[i % len(colors)], lw=2, label=f"Kriging Prediction ({points} points)")
+
+    # 안정적인 BEP 표시
+    bep_row = find_stable_bep(df_sorted)
+    bep_q = bep_row["q_m3s"]
+    bep_eff = bep_row["efficiency"]
+    plt.scatter(bep_q, bep_eff, color="red", s=100, zorder=6)
+    texts = [plt.text(
+        bep_q, bep_eff + 0.5, f"BEP\n(Q={bep_q:.4f}, Eff={bep_eff:.2f}%)",
+        fontsize=10, color="red", fontweight="bold", ha="center"
+    )]
+    adjust_text(texts, only_move={"points": "y", "text": "y"})
+
+    plt.xlabel("Flow rate Q [m³/s]")
+    plt.ylabel("Efficiency [%]")
+    plt.title("Pump Efficiency Curve with Multiple Kriging Predictions")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+    logging.info(f"Stable BEP: {bep_eff:.2f}% at Q = {bep_q:.4f} m³/s")
 
 # --------------------------------------------------
 # Input Data
 # --------------------------------------------------
 if __name__ == "__main__":
     data = {
-        "Pump Speed n [rpm]": [
-            900]*20,
+        "Pump Speed n [rpm]": [900]*20,
         "Water Temperature T [캜]": [
             25.1, 25.45, 25.5, 25.3, 25.25, 25.35, 25.15, 25.2, 25.1, 25.4,
             25.45, 25.3, 25.3, 24.9, 24.95, 25.55, 25.35, 25.15, 25.2, 25.25
@@ -211,4 +188,4 @@ if __name__ == "__main__":
     }
 
     df_input = pd.DataFrame(data)
-    calculate_efficiency_kriging(df_input)
+    calculate_efficiency_kriging_multiple(df_input, kriging_points_list=[12, 17, 40], range_factor=0.1)
