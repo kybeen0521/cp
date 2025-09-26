@@ -1,4 +1,4 @@
-# Centrifugal Pump Data Analysis Pipeline
+# Centrifugal Pump Data Analysis & Prediction Pipeline
 
 ## Overview
 This repository contains a set of Python tools for analyzing centrifugal pump performance,  
