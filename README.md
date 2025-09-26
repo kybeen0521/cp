@@ -94,6 +94,20 @@ Raw Excel/CSV Data
   - System curve plots: `output/plots/system_curve.png`
   - Logs: `output/logs/system_curve_log.txt`
 
+### 5-1: Pump Efficiency Kriging Prediction (Gaussian)
+- **Script:** src/cp_kriging_gaussian.py
+- **Input:** Unique Flow vs. Efficiency data from Step 3
+- **Process:**
+  - Generate B-spline interpolation of efficiency curve
+  - Apply 1D Ordinary Kriging with Gaussian semivariogram
+  - Predict efficiency at multiple points (e.g., 10, 15, 30, 50, 100 points)
+  - Visualize predicted curves alongside original data and BEP
+
+- **Output:** 
+  - Kriging prediction plots: output/plots/kriging_gaussian_*.png
+  - Logs: output/logs/kriging_gaussian_log.txt
+
+
 
 ---
 ## 📂 Project Directory Structure
