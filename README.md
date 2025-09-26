@@ -94,7 +94,7 @@ Raw Excel/CSV Data
   - System curve plots: `output/plots/system_curve.png`
   - Logs: `output/logs/system_curve_log.txt`
 
-### 5-1: Pump Efficiency Kriging Prediction (Gaussian)
+### Step 5-1: Pump Efficiency Kriging Prediction (Gaussian)
 - **Script:** src/cp_kriging_gaussian.py
 - **Input:** Unique Flow vs. Efficiency data from Step 3
 - **Process:**
@@ -107,7 +107,7 @@ Raw Excel/CSV Data
   - Kriging prediction plots: output/plots/kriging_gaussian_*.png
   - Logs: output/logs/kriging_gaussian_log.txt
 
-### 5-2: Pump Efficiency Kriging Prediction (Exponential)
+### Step 5-2: Pump Efficiency Kriging Prediction (Exponential)
 - **Script:** src/cp_kriging_exponential.py
 - **Input:** Unique Flow vs. Efficiency data from Step 3
 - **Process:**
