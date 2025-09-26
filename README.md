@@ -107,23 +107,50 @@ Raw Excel/CSV Data
   - Kriging prediction plots: output/plots/kriging_gaussian_*.png
   - Logs: output/logs/kriging_gaussian_log.txt
 
+### 5-2: Pump Efficiency Kriging Prediction (Exponential)
+- **Script:** src/cp_kriging_exponential.py
+- **Input:** Unique Flow vs. Efficiency data from Step 3
+- **Process:**
+  - Generate B-spline interpolation of efficiency curve
+  - Apply 1D Ordinary Kriging with Gaussian semivariogram
+  - Predict efficiency at multiple points (e.g., 10, 15, 30, 50, 100 points)
+  - Visualize predicted curves alongside original data and BEP
+
+- **Output:** 
+  - Kriging prediction plots: output/plots/kriging_exponential_*.png
+  - Logs: output/logs/kriging_gaussian_log.txt
 
 
 ---
 ## 📂 Project Directory Structure
 ```
 data/
-input/ # Raw Excel/CSV files
+input/                  # Raw Excel/CSV files
 output/
-plots/ # Generated plots from all steps
-logs/ # Step-specific logs
+├─ plots/               # Generated plots from all steps
+│  ├─ actual_head/
+│  ├─ shaft_power/
+│  ├─ efficiency/
+│  ├─ system_curve/
+│  └─ kriging/
+│      ├─ gaussian/
+│      └─ exponential/
+├─ logs/                # Step-specific logs
+│  ├─ actual_head_log.txt
+│  ├─ shaft_power_log.txt
+│  ├─ efficiency_log.txt
+│  ├─ system_curve_log.txt
+│  ├─ kriging_gaussian_log.txt
+│  └─ kriging_exponential_log.txt
 
 src/
-actual_head_curve.py
-shaft_power_curve.py
-pump_efficiency_curve.py
-system_curve.py
-utils/ # Helper functions (clean_columns.py, calc_utils.py, etc.)
+├─ actual_head_curve.py
+├─ shaft_power_curve.py
+├─ pump_efficiency_curve.py
+├─ system_curve.py
+├─ cp_kriging_gaussian.py       # Gaussian Kriging prediction
+├─ cp_kriging_exponential.py    # Exponential Kriging prediction
+└─ utils/                       # Helper functions (clean_columns.py, calc_utils.py, etc.)
 ```
 ---
 
