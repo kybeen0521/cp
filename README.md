@@ -29,7 +29,7 @@ Raw Excel/CSV Data
 ↓ Step 3: Pump Efficiency Analysis → `pump_efficiency_curve.py`  
 ↓ Step 4: System Curve Analysis → `system_curve.py`  
 ↓ Step 5-1: Pump Efficiency Kriging Prediction Analysis → `cp_kriging_gaussian.py`
-
+↓ Step 5-2: Pump Efficiency Kriging Prediction Analysis → `cp_kriging_exponential.py`
 ↓ Output: Cleaned Data, Calculated Metrics, Plots, Logs
 
 ---
