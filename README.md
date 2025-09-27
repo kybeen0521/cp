@@ -137,15 +137,15 @@ output/
 │  ├─ efficiency/
 │  ├─ system_curve/
 │  └─ kriging/
-│      ├─ gaussian/
-│      └─ exponential/
+│      ├─ exponential/
+│      └─ gaussian/
 ├─ logs/                # Step-specific logs
 │  ├─ actual_head_log.txt
 │  ├─ shaft_power_log.txt
 │  ├─ efficiency_log.txt
 │  ├─ system_curve_log.txt
-│  ├─ kriging_gaussian_log.txt
-│  └─ kriging_exponential_log.txt
+│  ├─ kriging_exponential_log.txt
+│  └─ kriging_gaussian_log.txt
 
 src/
 ├─ actual_head_curve.py
