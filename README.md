@@ -15,6 +15,7 @@ with automatic logging for reproducibility.
 - Actual head calculation and visualization
 - Shaft power computation from torque and RPM
 - Pump efficiency curve calculation with maximum efficiency detection
+- Pump efficiency prediction curves with kriging method and random data values through B spline interpolation
 - Pipe system head curve calculation based on fluid properties and pipe configuration
 - Automatic column detection for flexible input files
 - Interactive file selection via GUI
