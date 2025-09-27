@@ -163,6 +163,7 @@ src/
 ## 👤 Author
 **Yongbeen Kim (김용빈)**  
 Researcher, Intelligent Mechatronics Research Center, KETI
+Email address: 
 
 
 📅 Document last updated 2025.09.27
