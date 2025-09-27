@@ -58,6 +58,7 @@ Raw Excel/CSV Data
   - Plots: `output/plots/*.png`
   - Logs: `output/logs/actual_head_log.txt`
 
+
 ### Step 2: Shaft Power Calculation
 - **Script:** `src/shaft_power_curve.py`
 - **Input:** Excel file with `Torque` and `RPM`
@@ -68,6 +69,7 @@ Raw Excel/CSV Data
 - **Output:**  
   - Shaft power plots: `output/plots/*.png`
   - Logs: `output/logs/shaft_power_log.txt`
+
 
 ### Step 3: Pump Efficiency Analysis
 - **Script:** `src/pump_efficiency_curve.py`
@@ -80,6 +82,7 @@ Raw Excel/CSV Data
 - **Output:**  
   - Efficiency plots: `output/plots/*.png`
   - Logs: `output/logs/efficiency_log.txt`
+
 
 ### Step 4: Pipe System Curve Calculation
 - **Script:** `src/system_curve.py`
@@ -104,6 +107,10 @@ Raw Excel/CSV Data
   - Predict efficiency at multiple points (e.g., 10, 15, 30, 50, 100 points)
   - Visualize predicted curves alongside original data and BEP
 
+- **Output:** 
+  - Kriging prediction plots: output/plots/kriging_exponential_*.png
+  - Logs: output/logs/kriging_gaussian_log.txt
+
 
 ### Step 5-2: Pump Efficiency Kriging Prediction (Gaussian)
 - **Script:** src/cp_kriging_gaussian.py
@@ -116,11 +123,6 @@ Raw Excel/CSV Data
 
 - **Output:** 
   - Kriging prediction plots: output/plots/kriging_gaussian_*.png
-  - Logs: output/logs/kriging_gaussian_log.txt
-
-
-- **Output:** 
-  - Kriging prediction plots: output/plots/kriging_exponential_*.png
   - Logs: output/logs/kriging_gaussian_log.txt
 
 
