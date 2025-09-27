@@ -103,7 +103,7 @@ Raw Excel/CSV Data
 - **Process:**
   - Generate B-spline interpolation of efficiency curve
   - Apply 1D Ordinary Kriging with Gaussian semivariogram
-  - Predict efficiency at multiple points (e.g., 10, 15, 30, 50, 100 points)
+  - Predict efficiency at multiple points (e.g., 5, 10, 15, 25 points)
   - Visualize predicted curves alongside original data and BEP
 
 - **Output:** 
