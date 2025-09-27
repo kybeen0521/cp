@@ -148,8 +148,8 @@ src/
 ├─ shaft_power_curve.py
 ├─ pump_efficiency_curve.py
 ├─ system_curve.py
-├─ cp_kriging_gaussian.py       # Gaussian Kriging prediction
 ├─ cp_kriging_exponential.py    # Exponential Kriging prediction
+├─ cp_kriging_gaussian.py       # Gaussian Kriging prediction
 └─ utils/                       # Helper functions (clean_columns.py, calc_utils.py, etc.)
 ```
 ---
