@@ -124,9 +124,10 @@ for i, n_pts in enumerate(points_list):
 
 plt.xlabel("Flow Rate Q [m³/s]")
 plt.ylabel("Efficiency η [%]")
-plt.title("Pump Efficiency Curve with Kriging Prediction (Array-based, User sill/range)")
+plt.title("Pump Efficiency Curve with Kriging Prediction")
 plt.ylim(0, 100)
 plt.grid(True)
 plt.legend()
 plt.tight_layout()
 plt.show()
+
