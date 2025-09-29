@@ -118,7 +118,7 @@ def plot_efficiency(Q, eta, q_unique, eta_unique, bep_Q, bep_eta, points_list, c
 
     plt.xlabel("Flow Rate Q [m³/s]")
     plt.ylabel("Efficiency η [%]")
-    plt.title("Pump Efficiency Curve with Gaussian Kriging Prediction (Array-based)")
+    plt.title("Pump Efficiency Curve with Gaussian Kriging Prediction")
     plt.ylim(0, 100)
     plt.grid(True)
     plt.legend()
@@ -137,3 +137,4 @@ if __name__ == "__main__":
 
     plot_efficiency(Q, eta, q_unique, eta_unique, bep_Q, bep_eta,
                     points_list, colors, sill, range_kriging)
+
