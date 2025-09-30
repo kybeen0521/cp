@@ -130,7 +130,7 @@ Raw Excel/CSV Data
 ## 📂 Project Directory Structure
 ```
 data/
-input/                  # Raw Excel/CSV files
+input/                  # Raw CSV files
 output/
 ├─ plots/               # Generated plots from all steps
 │  ├─ actual_head/
