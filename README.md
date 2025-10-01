@@ -103,7 +103,7 @@ Raw Excel/CSV Data
 - **Input:** Unique Flow vs. Efficiency data from Step 3
 - **Process:**
   - Generate B-spline interpolation of efficiency curve
-  - Apply 1D Ordinary Kriging with Gaussian semivariogram
+  - Apply 1D Ordinary Kriging with Exponential semivariogram
   - Predict efficiency at multiple points (e.g., 10, 15, 25, 30 points)
   - Visualize predicted curves alongside original data and BEP
 
