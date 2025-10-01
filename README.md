@@ -4,8 +4,7 @@ This repository contains a set of Python tools for analyzing centrifugal pump pe
 including **actual head curves**, **shaft power curves**, **pump efficiency curves**, and **system curve calculations**.  
 The pipeline was developed as part of practice project.  
 
-The workflow is designed for **cleaning raw Excel/CSV data, calculating key performance metrics, and visualizing results**,  
-with automatic logging for reproducibility.
+The workflow is designed for **cleaning raw Excel/CSV data, calculating key performance metrics, and visualizing results**,  with automatic logging for reproducibility.
 
 
 📑 For more details, please refer to [CP Report](CPreport_KimYongBeen.pdf)
