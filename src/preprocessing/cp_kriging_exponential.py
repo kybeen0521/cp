@@ -26,9 +26,9 @@ CONFIG = {
     "G": 9.81,                 # Gravity [m/s²]
     "KRIGING_NOISE": 1e-12,    # Noise for Kriging covariance
     "N_LAGS": 10,              # Semivariogram lag bins
-    "PLOT_POINTS": [10, 15, 25, 30],
+    "PLOT_POINTS": [10, 15, 25, 35],
     "PLOT_COLORS": ["purple", "blue", "green", "orange"],
-    "DENSE_POINTS": 50         # Interpolation points
+    "DENSE_POINTS": 75         # Interpolation points
 }
 
 # -----------------------------
