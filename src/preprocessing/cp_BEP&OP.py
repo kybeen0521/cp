@@ -15,7 +15,7 @@ class PipeConfig:
     A = np.pi * (D/2)**2
 
 class FluidProperties:
-    RHO = 998.2
+    RHO = 1000
     MU = 0.001003
 
 # ----------------------------
