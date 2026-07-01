@@ -15,7 +15,7 @@ plt.rcParams.update({
     "figure.figsize": (10, 6),
     "axes.grid": True,
     "grid.linestyle": "--",
-    "grid.alpha": 0.7,
+    "grid.alpha": 0.9,
 })
 
 # ----------------------------
@@ -27,7 +27,7 @@ class PipeConfig:
     EPS: float = 0.00015
     KL_SUM: float = 1.8
     Z_DIFF: float = 2.0
-    G: float = 9.81
+    G: float = 9.80
     A: float = np.pi * (D / 2) ** 2
 
 class FluidProperties:
